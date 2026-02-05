@@ -11,8 +11,8 @@ https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/01-docker-t
 In the first module, we are covering the following topics:  
 * Introduction to GCP (completed)
 * Docker and Docker Compose (completed)
-* Running PostgreSQL with Docker (in progress)
-* Infrastructure setup with Terraform
+* Running PostgreSQL with Docker (completed)
+* Infrastructure setup with Terraform (in progress)
 
 ## Module 2: Workflow Orchestration
 https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/02-workflow-orchestration
