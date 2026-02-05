@@ -1,56 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 import pandas as pd
+from sqlalchemy import create_engine
+from tqdm.auto import tqdm
+import click
 
 
-# In[2]:
-
-
-pd.__file__
-
-
-# In[4]:
-
-
-# Read in data
-prefix = 'https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/'
-df = pd.read_csv(prefix + 'yellow_tripdata_2021-01.csv.gz')
-
-
-# In[5]:
-
-
-# Display first rows
-df.head()
-
-
-# In[6]:
-
-
-# Check data types
-df.dtypes
-
-
-# In[7]:
-
-
-# Check data shape
-df.shape
-
-
-# In[8]:
-
-
-len(df)
-
-
-# In[9]:
-
-
+# Set data types
 dtype = {
     "VendorID": "Int64",
     "passenger_count": "Int64",
@@ -75,116 +32,57 @@ parse_dates = [
     "tpep_dropoff_datetime"
 ]
 
-df = pd.read_csv(
-    prefix + 'yellow_tripdata_2021-01.csv.gz',
-    dtype=dtype,
-    parse_dates=parse_dates
-)
-
-
-# In[10]:
-
-
-df.dtypes
-
-
-# In[11]:
-
-
-df
-
-
-# In[15]:
-
-
-get_ipython().system('uv add psycopg2-binary')
-
-
-# In[18]:
-
-
-from sqlalchemy import create_engine
-engine = create_engine('postgresql://root:root@localhost:5432/ny_taxi')
-
-
-# In[19]:
-
-
-print(pd.io.sql.get_schema(df, name='yellow_taxi_data', con=engine))
-
-
-# In[20]:
-
-
-df.head(n=0).to_sql(name='yellow_taxi_data', con=engine, if_exists='replace')
-
-
-# In[21]:
-
-
-df_iter = pd.read_csv(
-    prefix + 'yellow_tripdata_2021-01.csv.gz',
-    dtype=dtype,
-    parse_dates=parse_dates,
-    iterator=True,
-    chunksize=100000
-)
-
-
-# In[22]:
-
-
-# for df_chunk in df_iter:
-    # print(len(df_chunk))
-
-
-# In[23]:
-
-
-get_ipython().system('uv add tqdm')
-
-
-# In[43]:
-
-
-# df_chunk.to_sql(name='yellow_taxi_data', con=engine, if_exists='append')
-
-
-# In[24]:
-
-
-from tqdm.auto import tqdm
-
-
-# In[25]:
-
-
-first = True
-
-for df_chunk in tqdm(df_iter):
-
-    if first:
-        # Create table schema (no data)
-        df_chunk.head(0).to_sql(
-            name="yellow_taxi_data",
-            con=engine,
-            if_exists="replace"
-        )
-        first = False
-        print("Table created")
-
-    # Insert chunk
-    df_chunk.to_sql(
-        name="yellow_taxi_data",
-        con=engine,
-        if_exists="append"
+@click.command()
+@click.option('--pg-user', default='root', help='PostgreSQL username')
+@click.option('--pg-pass', default='root', help='PostgreSQL password')
+@click.option('--pg-host', default='localhost', help='PostgreSQL host')
+@click.option('--pg-port', default='5432', help='PostgreSQL port')
+@click.option('--pg-db', default='ny_taxi', help='PostgreSQL database name')
+@click.option('--year', default=2021, type=int, help='Year of the data')
+@click.option('--month', default=1, type=int, help='Month of the data')
+@click.option('--chunksize', default=100000, type=int, help='Chunk size for ingestion')
+@click.option('--target-table', default='yellow_taxi_data', help='Target table name')
+def main(pg_user, pg_pass, pg_host, pg_port, pg_db, year, month, chunksize, target_table):
+    ''' Ingest NYC taxi data into PostgreSQL database'''
+    engine = create_engine(f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}")
+    url_prefix = 'https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow'
+    url = f'{url_prefix}/yellow_tripdata_{year:04d}-{month:02d}.csv.gz'
+    
+    df_iter = pd.read_csv(
+        url,
+        dtype=dtype,
+        parse_dates=parse_dates,
+        iterator=True,
+        chunksize=chunksize,
     )
 
-    print("Inserted:", len(df_chunk))
+    first = True
+
+    for df_chunk in tqdm(df_iter):
+        if first:
+            df_chunk.head(0).to_sql(
+                name=target_table,
+                con=engine,
+                if_exists='replace'
+            )
+            first = False
+
+        df_chunk.to_sql(
+            name=target_table,
+            con=engine,
+            if_exists='append'
+        )
 
 
-# In[ ]:
+
+    # ingest_data(
+    #     url=url,
+    #     engine=engine,
+    #     target_table=target_table,
+    #     chunksize=chunksize
+    # )
 
 
-
+if __name__ == '__main__':
+    main()
 
