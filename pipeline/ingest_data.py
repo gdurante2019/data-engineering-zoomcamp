@@ -73,16 +73,6 @@ def main(pg_user, pg_pass, pg_host, pg_port, pg_db, year, month, chunksize, targ
             if_exists='append'
         )
 
-
-
-    # ingest_data(
-    #     url=url,
-    #     engine=engine,
-    #     target_table=target_table,
-    #     chunksize=chunksize
-    # )
-
-
 if __name__ == '__main__':
     main()
 
